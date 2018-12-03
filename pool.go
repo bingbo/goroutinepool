@@ -32,6 +32,7 @@ func (worker *Worker) Work() {
 
 // 默认最大任务数
 var defaultMaxWorkerCount = 100
+
 // 默认最大协程数
 var defaultMaxGoroutineCount = 10
 
@@ -67,6 +68,41 @@ func NewGoroutinePool(maxGoroutineCount int, maxWorkerCount int) *GoroutinePool 
 }
 
 /**
+ * 提交并执行一个任务
+ */
+func (pool *GoroutinePool) Execute(worker Workable) {
+	pool.workerQueue <- worker
+	atomic.AddInt32(&pool.currentWorkerCount, 1)
+	log.Println("add one worker")
+	pool.once.Do(pool.start)
+}
+
+/**
+ * 显式调用手动关闭协程池
+ */
+func (pool *GoroutinePool) Shutdown() {
+	pool.shutdown()
+}
+
+/**
+ * 等待所有的任务执行完成
+ */
+func (pool *GoroutinePool) AwaitTermination() {
+	pool.waitGroup.Wait()
+}
+
+/**
+ * 协程池开始执行
+ */
+func (pool *GoroutinePool) start() {
+	pool.waitGroup.Add(pool.maxGoroutineCount)
+	for i := 0; i < pool.maxGoroutineCount; i++ {
+		go pool.doWork()
+	}
+	go pool.watch()
+}
+
+/**
  * 协程池监控，关闭协程
  */
 func (pool *GoroutinePool) watch() {
@@ -82,27 +118,6 @@ func (pool *GoroutinePool) watch() {
 			}
 		}
 	}
-}
-
-/**
- * 协程池开始执行
- */
-func (pool *GoroutinePool) start() {
-	pool.waitGroup.Add(pool.maxGoroutineCount)
-	for i := 0; i < pool.maxGoroutineCount; i++ {
-		go pool.doWork()
-	}
-	go pool.watch()
-}
-
-/**
- * 提交并执行一个任务
- */
-func (pool *GoroutinePool) Execute(worker Workable) {
-	pool.workerQueue <- worker
-	atomic.AddInt32(&pool.currentWorkerCount, 1)
-	log.Println("add one worker")
-	pool.once.Do(pool.start)
 }
 
 /**
@@ -126,25 +141,13 @@ func (pool *GoroutinePool) doWork() {
 }
 
 /**
- * 显式调用手动关闭协程池
- */
-func (pool *GoroutinePool) Shutdown() {
-	pool.shutdown()
-}
-
-/**
  * 内部关闭协程操作
  */
 func (pool *GoroutinePool) shutdown() {
 	pool.done <- struct{}{}
-	pool.once.Do(func() {
-		close(pool.workerQueue)
-	})
+	pool.once.Do(pool.close)
 }
 
-/**
- * 等待所有的任务执行完成
- */
-func (pool *GoroutinePool) AwaitTermination() {
-	pool.waitGroup.Wait()
+func (pool *GoroutinePool) close() {
+	close(pool.workerQueue)
 }

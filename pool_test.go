@@ -27,14 +27,15 @@ func TestPool(t *testing.T) {
 	}
 	pool.AwaitTermination()
 
+
 }
 
 func TestPool1(t *testing.T) {
 	pool := NewGoroutinePool(10, 30)
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 500; i++ {
 		id := i
 		worker := &Worker{func() {
-			time.Sleep(2 * time.Second)
+			time.Sleep(1 * time.Second)
 			log.Println(id, "worker done...")
 		}}
 		pool.Execute(worker)
