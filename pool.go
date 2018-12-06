@@ -45,6 +45,7 @@ type GoroutinePool struct {
 	waitGroup          sync.WaitGroup // 协程等待控制
 	currentWorkerCount int32          // 当前要执行的任务数
 	once               sync.Once
+	stop func()
 }
 
 /**
@@ -150,4 +151,38 @@ func (pool *GoroutinePool) shutdown() {
 
 func (pool *GoroutinePool) close() {
 	close(pool.workerQueue)
+}
+
+// 并发访问MAP
+type ConcurrentMap struct {
+	sync.RWMutex
+	Map map[string]interface{}
+}
+
+// 实例化一个线程安全MAP
+func NewConcurrentMap() *ConcurrentMap {
+	sm := &ConcurrentMap{}
+	sm.Map = map[string]interface{}{}
+	return sm
+}
+
+// 线程安全获取一个元素
+func (sm *ConcurrentMap) Get(key string) interface{} {
+	sm.RLock()
+	defer sm.RUnlock()
+	return sm.Map[key]
+}
+
+// 线程安全添加一个元素
+func (sm *ConcurrentMap) Put(key string, value interface{}) {
+	sm.Lock()
+	defer sm.Unlock()
+	sm.Map[key] = value
+}
+
+// 线程安全删除一个元素
+func (sm *ConcurrentMap) Delete(key string) {
+	sm.Lock()
+	defer sm.Unlock()
+	delete(sm.Map, key)
 }
