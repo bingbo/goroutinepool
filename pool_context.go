@@ -7,6 +7,7 @@ package goroutinepool
 
 import (
 	"context"
+	"goroutinepool/woker"
 	"log"
 	"sync/atomic"
 )
@@ -14,7 +15,7 @@ import (
 /**
  * 提交并执行一个任务
  */
-func (pool *GoroutinePool) ExecuteWithContext(worker Workable, ctx context.Context) {
+func (pool *GoroutinePool) ExecuteWithContext(worker woker.Workable, ctx context.Context) {
 	select {
 	case <-ctx.Done():
 		log.Println("goroutine had canceled...")

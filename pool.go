@@ -6,29 +6,11 @@
 package goroutinepool
 
 import (
+	"goroutinepool/woker"
 	"log"
 	"sync"
 	"sync/atomic"
 )
-
-// 任务接口
-type Workable interface {
-	Work()
-}
-
-// 任务结构
-type Worker struct {
-	// 任务动作函数
-	action func()
-}
-
-/**
- * Work
- * 任务启动
- */
-func (worker *Worker) Work() {
-	worker.action()
-}
 
 // 默认最大任务数
 var defaultMaxWorkerCount = 100
@@ -40,12 +22,12 @@ var defaultMaxGoroutineCount = 10
 type GoroutinePool struct {
 	maxGoroutineCount  int            // 最大协程数
 	maxWorkerCount     int            // 最大任务数
-	workerQueue        chan Workable  // 任务队列
+	workerQueue        chan woker.Workable  // 任务队列
 	done               chan struct{}  // 任务状态，是否所有任务已完成
 	waitGroup          sync.WaitGroup // 协程等待控制
 	currentWorkerCount int32          // 当前要执行的任务数
 	once               sync.Once
-	stop func()
+	stop               func()
 }
 
 /**
@@ -61,7 +43,7 @@ func NewGoroutinePool(maxGoroutineCount int, maxWorkerCount int) *GoroutinePool 
 	}
 	pool := &GoroutinePool{
 		maxGoroutineCount:  maxGoroutineCount,
-		workerQueue:        make(chan Workable, maxWorkerCount),
+		workerQueue:        make(chan woker.Workable, maxWorkerCount),
 		done:               make(chan struct{}),
 		currentWorkerCount: 0,
 	}
@@ -71,7 +53,7 @@ func NewGoroutinePool(maxGoroutineCount int, maxWorkerCount int) *GoroutinePool 
 /**
  * 提交并执行一个任务
  */
-func (pool *GoroutinePool) Execute(worker Workable) {
+func (pool *GoroutinePool) Execute(worker woker.Workable) {
 	pool.workerQueue <- worker
 	atomic.AddInt32(&pool.currentWorkerCount, 1)
 	log.Println("add one worker")
