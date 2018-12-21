@@ -8,6 +8,7 @@ package goroutinepool
 import (
 	"context"
 	"fmt"
+	"goroutinepool/channel"
 	"goroutinepool/simple"
 	"goroutinepool/woker"
 	"log"
@@ -165,6 +166,53 @@ func TestSimplePool(t *testing.T) {
 	pool2.Close()
 
 	time.Sleep(10 * time.Second)
+	c <- true
+	time.Sleep(1 * time.Second)
+	close(c)
+
+	time.Sleep(2 * time.Second)
+	log.Println("***goroutine num***", runtime.NumGoroutine())
+}
+func TestChannelPool(t *testing.T) {
+	c := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-c:
+				return
+			default:
+				log.Println("***goroutine num***", runtime.NumGoroutine())
+			}
+			time.Sleep(1000 * time.Millisecond)
+		}
+	}()
+
+	pool := channel.NewGoroutinePool(10, 100)
+	for i := 0; i < 100; i++ {
+		id := i
+		worker := &woker.Worker{func() {
+			time.Sleep(1 * time.Second)
+			log.Println(id, "worker done...")
+		}}
+		pool.Submit(worker)
+	}
+	pool.AwaitTermination()
+	pool.Close()
+
+	time.Sleep(2 * time.Second)
+
+	pool1 := channel.NewGoroutinePool(10, 100)
+	for i := 0; i < 100; i++ {
+		id := i
+		worker := &woker.Worker{func() {
+			time.Sleep(1 * time.Second)
+			log.Println(id, "worker done...")
+		}}
+		pool1.Submit(worker)
+	}
+	pool1.AwaitTermination()
+	pool1.Close()
+
 	c <- true
 	time.Sleep(1 * time.Second)
 	close(c)
