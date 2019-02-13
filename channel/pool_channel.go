@@ -6,6 +6,7 @@
 package channel
 
 import (
+	"fmt"
 	"goroutinepool/woker"
 	"log"
 	"sync"
@@ -73,6 +74,12 @@ func (pool *GoroutinePool) start() {
  * 开始处理所有的任务
  */
 func (pool *GoroutinePool) doWork() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("don't worry, i can take care this")
+			pool.waitGroup.Done()
+		}
+	}()
 	for worker := range pool.workerQueue {
 		worker.Work()
 		pool.waitGroup.Done()
