@@ -196,14 +196,14 @@ func TestChannelPool(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	pool := channel.NewGoroutinePool(10, 100)
+	pool := channel.NewGoroutinePoolWithCatch(10, 100, true)
 	for i := 0; i < 100; i++ {
 		id := i
 		worker := &woker.Worker{func() {
 			time.Sleep(1 * time.Second)
 			log.Println("***GoroutineID", GoID(), id, "worker done...")
 			if id == 50 {
-				panic("")
+				panic("test error")
 			}
 		}}
 		pool.Submit(worker)
@@ -224,23 +224,7 @@ func TestChannelPool(t *testing.T) {
 	// }
 	// pool1.AwaitTermination()
 	// pool1.Close()
-	time.Sleep(2 * time.Second)
-
-	pool1 := channel.NewGoroutinePool(10, 100)
-	for i := 0; i < 100; i++ {
-		id := i
-		worker := &woker.Worker{func() {
-			time.Sleep(1 * time.Second)
-			log.Println(id, "worker done...")
-			if id == 50 {
-				panic("test panic")
-			}
-		}}
-		pool1.Submit(worker)
-	}
-	pool1.AwaitTermination()
-	pool1.Close()
->>>>>>> 03cb428571377737e66d8beb3867a378c8b62051
+	// time.Sleep(2 * time.Second)
 
 	c <- true
 	time.Sleep(1 * time.Second)

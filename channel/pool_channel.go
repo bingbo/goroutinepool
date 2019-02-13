@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"goroutinepool/woker"
 	"log"
+	"runtime"
 	"sync"
 )
 
@@ -24,6 +25,7 @@ type GoroutinePool struct {
 	maxWorkerCount    int32               // 最大任务数
 	workerQueue       chan woker.Workable // 任务队列
 	waitGroup         sync.WaitGroup
+	catchedPanic      bool // 是否捕获每个线程中的panic，如果不捕获出现panic时会导致整个程序异常退出
 }
 
 /**
@@ -40,6 +42,22 @@ func NewGoroutinePool(maxGoroutineCount int32, maxWorkerCount int32) *GoroutineP
 	pool := &GoroutinePool{
 		maxGoroutineCount: maxGoroutineCount,
 		workerQueue:       make(chan woker.Workable, maxWorkerCount),
+	}
+	pool.start()
+	return pool
+}
+
+func NewGoroutinePoolWithCatch(maxGoroutineCount int32, maxWorkerCount int32, catchedPanic bool) *GoroutinePool {
+	if maxGoroutineCount == 0 {
+		maxGoroutineCount = defaultMaxGoroutineCount
+	}
+	if maxWorkerCount == 0 {
+		maxWorkerCount = defaultMaxWorkerCount
+	}
+	pool := &GoroutinePool{
+		maxGoroutineCount: maxGoroutineCount,
+		workerQueue:       make(chan woker.Workable, maxWorkerCount),
+		catchedPanic:      catchedPanic,
 	}
 	pool.start()
 	return pool
@@ -74,12 +92,10 @@ func (pool *GoroutinePool) start() {
  * 开始处理所有的任务
  */
 func (pool *GoroutinePool) doWork() {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Println("don't worry, i can take care this")
-			pool.waitGroup.Done()
-		}
-	}()
+	if pool.catchedPanic {
+		// 捕获当前自己线程中的异常，因为不能被主线程捕获到，如果不处理panic异常则会导致整个程序异常退出
+		defer pool.catchPanic()
+	}
 	for worker := range pool.workerQueue {
 		worker.Work()
 		pool.waitGroup.Done()
@@ -91,4 +107,16 @@ func (pool *GoroutinePool) doWork() {
  */
 func (pool *GoroutinePool) Close() {
 	close(pool.workerQueue)
+}
+
+/**
+ * 捕获每个线程的panic异常，由于每个线程只能捕获自己的异常，而主线程捕获不到子线程异常，如果不处理panic异常则会导致整个程序panic异常退出
+ */
+func (pool *GoroutinePool) catchPanic() {
+	if err := recover(); err != nil {
+		buf := make([]byte, 10000)
+		runtime.Stack(buf, false)
+		fmt.Println(fmt.Sprintf("panic defered [%v] : stack trace : %v", err, string(buf)))
+		pool.waitGroup.Done()
+	}
 }
