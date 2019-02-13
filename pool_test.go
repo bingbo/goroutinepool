@@ -183,7 +183,7 @@ func TestChannelPool(t *testing.T) {
 			default:
 				log.Println("***goroutine num***", runtime.NumGoroutine())
 			}
-			time.Sleep(1000 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 		}
 	}()
 
@@ -207,6 +207,9 @@ func TestChannelPool(t *testing.T) {
 		worker := &woker.Worker{func() {
 			time.Sleep(1 * time.Second)
 			log.Println(id, "worker done...")
+			if id == 50 {
+				panic("test panic")
+			}
 		}}
 		pool1.Submit(worker)
 	}
