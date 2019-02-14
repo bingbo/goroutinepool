@@ -10,6 +10,8 @@ import (
 	"goroutinepool/woker"
 	"log"
 	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -92,6 +94,7 @@ func (pool *GoroutinePool) start() {
  * 开始处理所有的任务
  */
 func (pool *GoroutinePool) doWork() {
+	log.Println(fmt.Sprintf("goroutine %d is running", pool.goroutineID()))
 	if pool.catchedPanic {
 		// 捕获当前自己线程中的异常，因为不能被主线程捕获到，如果不处理panic异常则会导致整个程序异常退出
 		defer pool.catchPanic()
@@ -116,7 +119,21 @@ func (pool *GoroutinePool) catchPanic() {
 	if err := recover(); err != nil {
 		buf := make([]byte, 10000)
 		runtime.Stack(buf, false)
-		fmt.Println(fmt.Sprintf("panic defered [%v] : stack trace : %v", err, string(buf)))
+		log.Println(fmt.Sprintf("panic defered [%v] stack trace : %v", err, string(buf)))
 		pool.waitGroup.Done()
 	}
+}
+
+/**
+ * 获取当前协程ID
+ */
+func (pool *GoroutinePool) goroutineID() int {
+	var buf [64]byte
+	n := runtime.Stack(buf[:], false)
+	idField := strings.Fields(strings.TrimPrefix(string(buf[:n]), "goroutine "))[0]
+	id, err := strconv.Atoi(idField)
+	if err != nil {
+		log.Println(fmt.Sprintf("cannot get goroutine id: %v", err))
+	}
+	return id
 }
