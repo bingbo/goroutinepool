@@ -8,6 +8,7 @@ package goroutinepool
 import (
 	"context"
 	"fmt"
+	"github.com/panjf2000/ants"
 	"goroutinepool/channel"
 	"goroutinepool/simple"
 	"goroutinepool/woker"
@@ -16,6 +17,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -236,11 +238,11 @@ func TestChannelPool(t *testing.T) {
 
 func TestSimpleChannelPool(t *testing.T) {
 	pool := channel.NewGoroutinePool(4, 100)
+	defer pool.Close()
 	var arr []string
 	titleArr := []string{"111", "222"}
 	descArr := []string{"****", "---"}
 	rand.Seed(time.Now().Unix())
-
 	for i := 0; i < 500; i++ {
 		arr = append(arr, fmt.Sprintf("%d", i))
 		if len(arr) == 20 {
@@ -249,8 +251,8 @@ func TestSimpleChannelPool(t *testing.T) {
 			title := titleArr[idx]
 			desc := descArr[idx]
 			worker := &woker.Worker{func() {
-				sendMessage(strings.Join(arr1, ","), title, desc)
-				fmt.Println("***GoroutineID", GoID())
+				err := sendMessage(strings.Join(arr1, ","), title, desc)
+				log.Println("err:", err)
 			}}
 			pool.Submit(worker)
 			arr = []string{}
@@ -258,13 +260,12 @@ func TestSimpleChannelPool(t *testing.T) {
 
 	}
 	pool.AwaitTermination()
-	pool.Close()
-
 }
 
-func sendMessage(uids string, title string, description string) {
+func sendMessage(uids string, title string, description string) error {
 	time.Sleep(1 * time.Second)
-	fmt.Println(time.Now().Format("2006/01/02 15:04:05"), "title:", title, "description:", description, "uids:", uids)
+	log.Printf("title:%s description:%s uids:%s", title, description, uids)
+	return nil
 }
 
 func TestSomething(t *testing.T) {
@@ -287,4 +288,52 @@ func GoID() int {
 		panic(fmt.Sprintf("cannot get goroutine id: %v", err))
 	}
 	return id
+}
+
+var sum int32
+
+func myFunc(i interface{}) {
+	n := i.(int32)
+	atomic.AddInt32(&sum, n)
+	log.Printf("run with %d", n)
+}
+func demoFunc() {
+	time.Sleep(10 * time.Microsecond)
+	log.Println("hello world!")
+}
+func TestAnts(t *testing.T) {
+	defer ants.Release()
+	runTimes := 1000
+	var wg sync.WaitGroup
+	syncCalculateSum := func() {
+		demoFunc()
+		wg.Done()
+	}
+	for i := 0; i < runTimes; i++ {
+		wg.Add(1)
+		ants.Submit(syncCalculateSum)
+	}
+	wg.Wait()
+	log.Printf("running goroutines: %d", ants.Running())
+	log.Println("finish all tasks")
+
+	p, _ := ants.NewPoolWithFunc(10, func(i interface{}) {
+		myFunc(i)
+		wg.Done()
+	})
+	defer p.Release()
+	for i := 0; i < runTimes; i++ {
+		wg.Add(1)
+		p.Invoke(int32(i))
+	}
+	wg.Wait()
+	log.Printf("running goroutines: %d", p.Running())
+	log.Printf("finish all tasks,result is %d", sum)
+
+	type TestStruct struct {
+		Name string
+		T    time.Time
+	}
+	ts := TestStruct{Name: "bill"}
+	log.Println(ts, ts.T.Format("2006-01-02 15:01-02"))
 }

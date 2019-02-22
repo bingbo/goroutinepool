@@ -15,11 +15,13 @@ import (
 	"sync"
 )
 
-// 默认最大任务数
-var defaultMaxWorkerCount int32 = 100
+const (
+	// 默认最大任务数
+	DefaultMaxWorkerCount int32 = 100
 
-// 默认最大协程数
-var defaultMaxGoroutineCount int32 = 10
+	// 默认最大协程数
+	DefaultMaxGoroutineCount int32 = 10
+)
 
 // 协程池结构定义
 type GoroutinePool struct {
@@ -30,16 +32,20 @@ type GoroutinePool struct {
 	catchedPanic      bool // 是否捕获每个线程中的panic，如果不捕获出现panic时会导致整个程序异常退出
 }
 
+func DefaultGoroutinePool() *GoroutinePool {
+	return NewGoroutinePool(DefaultMaxGoroutineCount, DefaultMaxWorkerCount)
+}
+
 /**
  * NewGoroutinePool
  * 实例化一个协程池
  */
 func NewGoroutinePool(maxGoroutineCount int32, maxWorkerCount int32) *GoroutinePool {
 	if maxGoroutineCount == 0 {
-		maxGoroutineCount = defaultMaxGoroutineCount
+		maxGoroutineCount = DefaultMaxGoroutineCount
 	}
 	if maxWorkerCount == 0 {
-		maxWorkerCount = defaultMaxWorkerCount
+		maxWorkerCount = DefaultMaxWorkerCount
 	}
 	pool := &GoroutinePool{
 		maxGoroutineCount: maxGoroutineCount,
@@ -51,10 +57,10 @@ func NewGoroutinePool(maxGoroutineCount int32, maxWorkerCount int32) *GoroutineP
 
 func NewGoroutinePoolWithCatch(maxGoroutineCount int32, maxWorkerCount int32, catchedPanic bool) *GoroutinePool {
 	if maxGoroutineCount == 0 {
-		maxGoroutineCount = defaultMaxGoroutineCount
+		maxGoroutineCount = DefaultMaxGoroutineCount
 	}
 	if maxWorkerCount == 0 {
-		maxWorkerCount = defaultMaxWorkerCount
+		maxWorkerCount = DefaultMaxWorkerCount
 	}
 	pool := &GoroutinePool{
 		maxGoroutineCount: maxGoroutineCount,
