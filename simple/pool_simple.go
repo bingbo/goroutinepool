@@ -8,7 +8,6 @@ package simple
 import (
 	"goroutinepool/woker"
 	"log"
-	"runtime"
 	"sync"
 	"sync/atomic"
 )
@@ -56,7 +55,7 @@ func NewGoroutinePool(maxGoroutineCount int32, maxWorkerCount int32) *GoroutineP
 func (pool *GoroutinePool) Submit(worker woker.Workable) {
 	pool.waitGroup.Add(1)
 	pool.workerQueue <- worker
-	log.Println("add one worker")
+	// log.Println("add one worker")
 }
 
 /**
@@ -80,7 +79,7 @@ func (pool *GoroutinePool) start() {
  */
 func (pool *GoroutinePool) doWork() {
 	for {
-		log.Println("goroutine count ", runtime.NumGoroutine())
+		// log.Println("goroutine count ", runtime.NumGoroutine())
 		select {
 		case <-pool.done:
 			log.Println("close goroutine....")

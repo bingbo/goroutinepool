@@ -337,3 +337,54 @@ func TestAnts(t *testing.T) {
 	ts := TestStruct{Name: "bill"}
 	log.Println(ts, ts.T.Format("2006-01-02 15:01-02"))
 }
+
+func TestSimplePoolForAsync(t *testing.T) {
+	type Item struct {
+		IDs   []int
+		Type  int
+		Title string
+	}
+	inputChan := make(chan *Item, 2)
+
+	go func() {
+		// defer wg.Done()
+		var arr []int
+		for i := 0; i < 1000; i++ {
+			arr = append(arr, i)
+			if len(arr)%10 == 0 {
+				arrCopy := arr
+				t := rand.Intn(2)
+				if t == 1 {
+					inputChan <- &Item{IDs: arrCopy, Type: t, Title: "aa"}
+				} else {
+					inputChan <- &Item{IDs: arrCopy, Type: t, Title: "bb"}
+				}
+				// log.Println("********** input one number ", arrCopy)
+				arr = []int{}
+			}
+		}
+		close(inputChan)
+		log.Println("----------- input all done ....")
+	}()
+	pool1 := simple.NewGoroutinePool(5, 10)
+	// var wg sync.WaitGroup
+	defer pool1.Close()
+	// wg.Add(2)
+	go func() {
+		// defer wg.Done()
+		for item := range inputChan {
+			// log.Println("********** output one number ", id)
+			idCopy := item
+			worker := &woker.Worker{func() {
+				time.Sleep(1 * time.Second)
+				log.Println("*********** take one number ", idCopy)
+			}}
+			pool1.Submit(worker)
+		}
+		log.Println("---------- all take done")
+	}()
+	time.Sleep(1 * time.Second)
+	// wg.Wait()
+	pool1.AwaitTermination()
+	log.Println("*********** all number taked")
+}
